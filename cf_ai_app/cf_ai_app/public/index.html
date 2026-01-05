@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CF AI Social Chat</title>
+    <style>
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        margin: 0;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+      }
+      h1 {
+        margin-bottom: 8px;
+        font-size: 28px;
+      }
+      p {
+        margin-top: 0;
+        color: #94a3b8;
+      }
+      .chat {
+        background: #111827;
+        border-radius: 16px;
+        padding: 16px;
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .message {
+        padding: 10px 12px;
+        border-radius: 12px;
+        max-width: 90%;
+        line-height: 1.4;
+      }
+      .message.user {
+        background: #1d4ed8;
+        align-self: flex-end;
+      }
+      .message.assistant {
+        background: #1f2937;
+        align-self: flex-start;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      input {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #334155;
+        background: #0b1120;
+        color: #e2e8f0;
+      }
+      button {
+        padding: 12px 18px;
+        border-radius: 10px;
+        border: none;
+        background: #22c55e;
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+      }
+      .controls button {
+        background: #f97316;
+        color: #0f172a;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SocialNetwork AI Assistant</h1>
+      <p>Chat with a Workers AI assistant for the SocialNetwork Qt app. Memory is stored per session using Durable Objects.</p>
+      <div class="chat" id="chat"></div>
+      <form id="chat-form">
+        <input
+          id="message"
+          type="text"
+          placeholder="Ask about profile ideas, privacy tips, search filters, or friend suggestions..."
+          required
+        />
+        <button type="submit">Send</button>
+      </form>
+      <div class="controls">
+        <span id="status">Ready</span>
+        <button id="reset" type="button">Reset memory</button>
+      </div>
+    </main>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("chat-form");
+      const input = document.getElementById("message");
+      const status = document.getElementById("status");
+      const reset = document.getElementById("reset");
+      const sessionId = crypto.randomUUID();
+
+      function addMessage(role, content) {
+        const div = document.createElement("div");
+        div.className = `message ${role}`;
+        div.textContent = content;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      async function sendMessage(message) {
+        status.textContent = "Thinking...";
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, sessionId })
+        });
+        const data = await response.json();
+        status.textContent = "Ready";
+        return data.reply;
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const message = input.value.trim();
+        if (!message) return;
+        addMessage("user", message);
+        input.value = "";
+        const reply = await sendMessage(message);
+        addMessage("assistant", reply);
+      });
+
+      reset.addEventListener("click", async () => {
+        await fetch("/api/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId })
+        });
+        chat.innerHTML = "";
+        status.textContent = "Memory cleared";
+      });
+    </script>
+  </body>
+</html>
